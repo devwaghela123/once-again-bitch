@@ -1,131 +1,162 @@
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = 3000;
+const SECRET_KEY = 'secret_key'; // Replace with a secure key in production
 
-app.use(express.json());
-app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
+// Database setup
+const db = new sqlite3.Database('./faceslap.db', (err) => {
+  if (err) console.error('Database connection error:', err);
+});
 
+// Create tables
+db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT,
+    email TEXT
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    file_path TEXT,
+    elo_rating INTEGER DEFAULT 1000,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS captions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    photo_id INTEGER,
+    caption_text TEXT,
+    score INTEGER DEFAULT 0,
+    FOREIGN KEY(photo_id) REFERENCES photos(id)
+  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    photo_id INTEGER,
+    user_id INTEGER,
+    comment_text TEXT,
+    is_anonymous INTEGER DEFAULT 0,
+    FOREIGN KEY(photo_id) REFERENCES photos(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  )`);
+});
 
-// Multer setup
+// Multer setup for photo uploads
 const storage = multer.diskStorage({
-  destination: './uploads/',
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage });
-const multiUpload = upload.array('images', 10);
 
-let users = [];
+// Middleware
+app.use(express.json());
+app.use(express.static('public'));
 
-// Brutal roasts
-const roasts = [
-  "Looks like their face was drawn with a crayon.",
-  "That jawline committed tax fraud.",
-  "Your mirror deserves an apology.",
-  "Uninstall your face, it's corrupted.",
-  "This photo is why aliens won't visit us.",
-  "This face flunked evolution.",
-  "Every pixel screams for mercy.",
-  "Born at rock bottom and started digging.",
-  "Built like expired lasagna.",
-  "Haunted houses use your selfies.",
-  "Washed up before the tide came in.",
-  "The 'before' in every surgery ad.",
-  "Outlook: 404 Facial Definition Not Found.",
-  "Built like a deleted draft.",
-  "Human patch notes: Buggy AF.",
-  "DNA must’ve Ctrl+Z’d itself.",
-  "Facial structure sponsored by MS Paint.",
-  "Proof evolution can reverse.",
-  "They look like AI tried to render shame.",
-  "Beta version of a scarecrow.",
-  "Even captcha wouldn’t verify that mug.",
-  "The face that launched a thousand therapy bills.",
-  "More bugs than a Bethesda game.",
-  "Like Wi-Fi at 1 bar — broken & annoying.",
-  "Background character energy.",
-  "Walmart brand Greek statue.",
-  "They blink and Wi-Fi drops.render engine.",
-  "The final boss in a discount horror game.",
-  "Even the file name is ashamed.",
-  "The face that invented regret.",
-  "You blink and cameras shatter.",
-  "Looks like a meme that didn’t make it.",
-  "Some features sold separately.",
-  "You lost to a pigeon pic, congrats.",
-  "Built like low-budget NPC.",
-  "Ranked lower than a JPEG of soup.",
-  "You got facial features ",
-  "Looks like someone sneezed during creation.",
-  "Born without a in Comic Sans.",
-  "This face is an error 404."
-];
-
-function getRandomRoast() {
-  const index = Math.floor(Math.random() * roasts.length);
-  return roasts[index];
+// Authentication middleware
+function authenticateToken(req, res, next) {
+  const token = req.headers['authorization'];
+  if (!token) return res.status(401).json({ error: 'No token provided' });
+  jwt.verify(token, SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
 }
 
-app.post('/upload', (req, res) => {
-  multiUpload(req, res, (err) => {
-    if (err) return res.status(500).send(`Upload error: ${err.message}`);
-    if (!req.files || req.files.length < 6) return res.status(400).send('Upload at least 6 images to enter FaceSlap.');
-
-    req.files.forEach(file => {
-      users.push({
-        filename: file.filename,
-        score: 1000,
-        wins: 0,
-        losses: 0,
-        tag: null
-      });
+// Routes
+app.post('/register', async (req, res) => {
+  const { username, password, email } = req.body;
+  const hashedPassword = await bcrypt.hash(password, 10);
+  db.run(`INSERT INTO users (username, password, email) VALUES (?, ?, ?)`,
+    [username, hashedPassword, email], function (err) {
+      if (err) return res.status(400).json({ error: err.message });
+      res.json({ id: this.lastID });
     });
+});
 
-    res.redirect('/');
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  db.get(`SELECT * FROM users WHERE username = ?`, [username], async (err, user) => {
+    if (err || !user) return res.status(400).json({ error: 'User not found' });
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+    const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1h' });
+    res.json({ token });
   });
 });
 
-app.get('/battle', (req, res) => {
-  if (users.length < 2) return res.status(400).send('Not enough contestants.');
-  const shuffled = [...users].sort(() => 0.5 - Math.random());
-  const [a, b] = shuffled.slice(0, 2);
-  res.json({ a, b });
+app.post('/upload', authenticateToken, upload.single('photo'), (req, res) => {
+  const user_id = req.user.id;
+  const file_path = req.file.path;
+  db.run(`INSERT INTO photos (user_id, file_path) VALUES (?, ?)`,
+    [user_id, file_path], function (err) {
+      if (err) return res.status(400).json({ error: err.message });
+      res.json({ id: this.lastID });
+    });
+});
+
+app.get('/matchup', (req, res) => {
+  db.all(`SELECT * FROM photos ORDER BY RANDOM() LIMIT 2`, [], (err, rows) => {
+    if (err || rows.length < 2) return res.status(500).json({ error: 'Not enough photos' });
+    res.json(rows);
+  });
 });
 
 app.post('/vote', (req, res) => {
-  const { winner, loser } = req.body;
-  const winUser = users.find(u => u.filename === winner);
-  const loseUser = users.find(u => u.filename === loser);
-
-  if (!winUser || !loseUser) return res.status(400).send('Invalid participants');
-
-  const eloSteal = Math.round(loseUser.score * 0.05);
-  winUser.score += eloSteal;
-  winUser.wins++;
-  loseUser.score -= Math.floor(eloSteal / 2);
-  loseUser.losses++;
-
-  if (loseUser.losses >= 10) {
-    loseUser.tag = 'Rage Mode';
-  } else if (winUser.score > 1300) {
-    winUser.tag = 'Certified Alpha';
-  } else if (loseUser.score < 800) {
-    loseUser.tag = 'Backbench Beta';
-  }
-
-  const roast = getRandomRoast();
-  res.json({ message: `${winner} won over ${loser}`, winUser, loseUser, roast });
+  const { winner_id, loser_id } = req.body;
+  // Simple ELO update (to be expanded)
+  db.run(`UPDATE photos SET elo_rating = elo_rating + 10 WHERE id = ?`, [winner_id]);
+  db.run(`UPDATE photos SET elo_rating = elo_rating - 5 WHERE id = ?`, [loser_id]);
+  res.json({ message: 'Vote recorded' });
 });
 
-app.get('/leaderboard', (req, res) => {
-  const sorted = [...users].sort((a, b) => b.score - a.score);
-  res.json(sorted);
+app.get('/captions/:photoId', (req, res) => {
+  const { photoId } = req.params;
+  db.all(`SELECT * FROM captions WHERE photo_id = ?`, [photoId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
 });
 
-app.listen(PORT, () => console.log(`🔥 FaceSlap LIVE at http://localhost:${PORT}`));
+app.post('/caption', authenticateToken, (req, res) => {
+  const { photo_id, caption_text } = req.body;
+  db.run(`INSERT INTO captions (photo_id, caption_text) VALUES (?, ?)`,
+    [photo_id, caption_text], function (err) {
+      if (err) return res.status(400).json({ error: err.message });
+      res.json({ id: this.lastID });
+    });
+});
+
+app.post('/caption/vote', (req, res) => {
+  const { caption_id } = req.body;
+  db.run(`UPDATE captions SET score = score + 5 WHERE id = ?`, [caption_id]);
+  res.json({ message: 'Caption vote recorded' });
+});
+
+app.post('/comment', authenticateToken, (req, res) => {
+  const { photo_id, comment_text, is_anonymous } = req.body;
+  const user_id = is_anonymous ? null : req.user.id;
+  db.run(`INSERT INTO comments (photo_id, user_id, comment_text, is_anonymous) VALUES (?, ?, ?, ?)`,
+    [photo_id, user_id, comment_text, is_anonymous ? 1 : 0], function (err) {
+      if (err) return res.status(400).json({ error: err.message });
+      res.json({ id: this.lastID });
+    });
+});
+
+app.get('/comments/:photoId', (req, res) => {
+  const { photoId } = req.params;
+  db.all(`SELECT comment_text, is_anonymous FROM comments WHERE photo_id = ?`, [photoId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
