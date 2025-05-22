@@ -1,74 +1,63 @@
 body {
-  background: #111;
-  color: #eee;
-  font-family: Arial, sans-serif;
+  background-color: #121212;
+  color: #fff;
+  font-family: 'Arial', sans-serif;
   text-align: center;
-  padding: 2rem;
+  margin: 0;
+  padding: 20px;
 }
 
-h1 {
-  font-size: 2.5rem;
-  color: crimson;
+#auth, #upload {
+  margin-bottom: 20px;
 }
 
-#arena {
+input {
+  background: #333;
+  color: #fff;
+  border: 1px solid #ff0000;
+  padding: 5px;
+  margin: 5px;
+}
+
+#matchup {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 2rem 0;
+  justify-content: space-around;
+  margin: 20px 0;
 }
 
-.card {
-  width: 150px;
-  height: 150px;
-  margin: 1rem;
-  background-color: #222;
-  background-size: cover;
-  background-position: center;
-  cursor: pointer;
-  border: 3px solid #333;
-  border-radius: 10px;
-  transition: transform 0.2s;
-}
-
-.card:hover {
-  transform: scale(1.05);
-  border-color: crimson;
-}
-
-.vs {
-  font-size: 2rem;
-  margin: 0 1rem;
-  color: #777;
-}
-
-#roast {
-  font-size: 1rem;
-  color: gold;
-  margin-top: 1rem;
-}
-form {
-  margin-bottom: 2rem;
-}
-
-input[type=\"file\"] {
-  margin: 1rem 0;
-  color: white;
+.face {
   background: #222;
-  padding: 0.5rem;
-  border-radius: 5px;
+  padding: 10px;
+  border: 2px solid #ff0000;
+}
+
+img {
+  width: 300px;
+  height: 300px;
+  object-fit: cover;
 }
 
 button {
-  padding: 0.5rem 1rem;
-  background-color: crimson;
-  color: white;
+  background: #ff0000;
+  color: #fff;
   border: none;
-  border-radius: 5px;
+  padding: 10px 20px;
+  margin: 5px;
   cursor: pointer;
+  font-weight: bold;
 }
 
 button:hover {
-  background-color: darkred;
+  background: #cc0000;
 }
 
+#captions, #comments {
+  margin: 20px 0;
+}
+
+#captionList div, #commentList div {
+  background: #333;
+  padding: 10px;
+  margin: 5px;
+  border-left: 4px solid #ff0000;
+}
