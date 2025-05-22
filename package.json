@@ -1,16 +1,16 @@
 {
-  "name": "evolution-loop",
+  "name": "faceslap",
   "version": "1.0.0",
-  "description": "",
+  "description": "FaceSlap app - Upload. Compete. Humiliate. Repeat.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "multer": "^1.4.5-lts.1",
-    "express": "^5.1.0"
+    "express": "^4.17.1",
+    "sqlite3": "^5.0.2",
+    "multer": "^1.4.2",
+    "bcrypt": "^5.0.1",
+    "jsonwebtoken": "^8.5.1"
   }
 }
