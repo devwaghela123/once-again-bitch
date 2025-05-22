@@ -2,26 +2,44 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🔥 FaceSlap</title>
+  <title>FaceSlap</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>FaceSlap Arena</h1>
-
-  <!-- Upload form -->
-  <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
-    <label for="images">Upload 6-10 Faces:</label>
-    <input type="file" name="images" id="images" multiple required accept="image/*">
-    <button type="submit">🔥 Enter the Arena</button>
-  </form>
-
-  <div id="arena">
-    <div class="card" id="cardA"></div>
-    <div class="vs">VS</div>
-    <div class="card" id="cardB"></div>
+  <div id="auth">
+    <input id="username" placeholder="Username">
+    <input id="password" type="password" placeholder="Password">
+    <input id="email" placeholder="Email" style="display: none;">
+    <button onclick="register()">Register</button>
+    <button onclick="login()">Login</button>
   </div>
-
-  <p id="roast"></p>
+  <div id="upload" style="display: none;">
+    <input type="file" id="photoInput" accept="image/*">
+    <button onclick="uploadPhoto()">Upload Photo</button>
+  </div>
+  <div id="matchup">
+    <div class="face">
+      <img id="face1" src="" alt="Face 1">
+      <button onclick="vote(0)">Slap This</button>
+    </div>
+    <div class="face">
+      <img id="face2" src="" alt="Face 2">
+      <button onclick="vote(1)">Slap This</button>
+    </div>
+  </div>
+  <div id="captions">
+    <h2>Captions</h2>
+    <div id="captionList"></div>
+    <input id="newCaption" placeholder="Add your own brutal caption">
+    <button onclick="addCaption()">Submit Caption</button>
+  </div>
+  <div id="comments">
+    <h2>Comments</h2>
+    <div id="commentList"></div>
+    <input id="commentInput" placeholder="Drop a comment">
+    <label><input type="checkbox" id="anonymous"> Anonymous</label>
+    <button onclick="addComment()">Comment</button>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
