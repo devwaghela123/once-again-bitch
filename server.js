@@ -4,39 +4,10 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
-
-
-// Animal hierarchy scoring system
-const animalHierarchy = {
-  'lion': 100,
-  'tiger': 90,
-  'bull': 85,
-  'wolf': 80,
-  'panther': 75,
-  'eagle': 70,
-  'dog': 60,
-  'cat': 50,
-  'donkey': 45,
-  'cow': 40,
-  'pig': 35,
-  'rabbit': 30,
-  'deer': 25,
-  'sheep': 20,
-  'rat': 10,
-  'monkey': 65,
-  'hippo': 55,
-  'racoon': 30,
-  'snowseal': 20,
-  'tortoise': 15
-};
-
-// In-memory database to hold users and scores
-let users = []; // { filename, score, matches, wins }
 
 // Multer setup
 const storage = multer.diskStorage({
@@ -48,37 +19,83 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 const multiUpload = upload.array('images', 10);
 
-// Home
-app.get('/', (req, res) => {
-  res.send('Welcome to Evolution Loop');
-});
+let users = [];
 
-// Upload images
+// Brutal roasts
+const roasts = [
+  "Looks like their face was drawn with a crayon.",
+  "That jawline committed tax fraud.",
+  "Your mirror deserves an apology.",
+  "Uninstall your face, it's corrupted.",
+  "This photo is why aliens won't visit us.",
+  "This face flunked evolution.",
+  "Every pixel screams for mercy.",
+  "Born at rock bottom and started digging.",
+  "Built like expired lasagna.",
+  "Haunted houses use your selfies.",
+  "Washed up before the tide came in.",
+  "The 'before' in every surgery ad.",
+  "Outlook: 404 Facial Definition Not Found.",
+  "Built like a deleted draft.",
+  "Human patch notes: Buggy AF.",
+  "DNA must’ve Ctrl+Z’d itself.",
+  "Facial structure sponsored by MS Paint.",
+  "Proof evolution can reverse.",
+  "They look like AI tried to render shame.",
+  "Beta version of a scarecrow.",
+  "Even captcha wouldn’t verify that mug.",
+  "The face that launched a thousand therapy bills.",
+  "More bugs than a Bethesda game.",
+  "Like Wi-Fi at 1 bar — broken & annoying.",
+  "Background character energy.",
+  "Walmart brand Greek statue.",
+  "They blink and Wi-Fi drops.render engine.",
+  "The final boss in a discount horror game.",
+  "Even the file name is ashamed.",
+  "The face that invented regret.",
+  "You blink and cameras shatter.",
+  "Looks like a meme that didn’t make it.",
+  "Some features sold separately.",
+  "You lost to a pigeon pic, congrats.",
+  "Built like low-budget NPC.",
+  "Ranked lower than a JPEG of soup.",
+  "You got facial features ",
+  "Looks like someone sneezed during creation.",
+  "Born without a in Comic Sans.",
+  "This face is an error 404."
+];
+
+function getRandomRoast() {
+  const index = Math.floor(Math.random() * roasts.length);
+  return roasts[index];
+}
+
 app.post('/upload', (req, res) => {
   multiUpload(req, res, (err) => {
-    if (err) return res.status(500).send(`Error: ${err.message}`);
-    if (!req.files || req.files.length < 3) return res.status(400).send('Upload at least 3 images');
+    if (err) return res.status(500).send(`Upload error: ${err.message}`);
+    if (!req.files || req.files.length < 6) return res.status(400).send('Upload at least 6 images to enter FaceSlap.');
 
     req.files.forEach(file => {
-      const name = file.filename;
-      const baseAnimal = Object.keys(animalHierarchy)[Math.floor(Math.random() * Object.keys(animalHierarchy).length)];
-      const score = animalHierarchy[baseAnimal] + Math.floor(Math.random() * 20 - 10);
-      users.push({ filename: name, score, matches: 0, wins: 0 });
+      users.push({
+        filename: file.filename,
+        score: 1000,
+        wins: 0,
+        losses: 0,
+        tag: null
+      });
     });
 
-    res.json({ message: 'Uploaded and registered for battle', users });
+    res.redirect('/');
   });
 });
 
-// Get 2 random face-off candidates
-app.get('/faceoff', (req, res) => {
-  if (users.length < 2) return res.status(400).send('Not enough players');
+app.get('/battle', (req, res) => {
+  if (users.length < 2) return res.status(400).send('Not enough contestants.');
   const shuffled = [...users].sort(() => 0.5 - Math.random());
-  const [first, second] = shuffled.slice(0, 2);
-  res.json({ first, second });
+  const [a, b] = shuffled.slice(0, 2);
+  res.json({ a, b });
 });
 
-// Vote: winner steals points from loser
 app.post('/vote', (req, res) => {
   const { winner, loser } = req.body;
   const winUser = users.find(u => u.filename === winner);
@@ -86,22 +103,27 @@ app.post('/vote', (req, res) => {
 
   if (!winUser || !loseUser) return res.status(400).send('Invalid participants');
 
-  const steal = Math.round(loseUser.score * 0.1);
-  winUser.score += steal;
-  winUser.matches++;
+  const eloSteal = Math.round(loseUser.score * 0.05);
+  winUser.score += eloSteal;
   winUser.wins++;
-  loseUser.score -= steal;
-  loseUser.matches++;
+  loseUser.score -= Math.floor(eloSteal / 2);
+  loseUser.losses++;
 
-  res.json({ message: `${winner} defeated ${loser}`, winUser, loseUser });
+  if (loseUser.losses >= 10) {
+    loseUser.tag = 'Rage Mode';
+  } else if (winUser.score > 1300) {
+    winUser.tag = 'Certified Alpha';
+  } else if (loseUser.score < 800) {
+    loseUser.tag = 'Backbench Beta';
+  }
+
+  const roast = getRandomRoast();
+  res.json({ message: `${winner} won over ${loser}`, winUser, loseUser, roast });
 });
 
-// Leaderboard
 app.get('/leaderboard', (req, res) => {
   const sorted = [...users].sort((a, b) => b.score - a.score);
   res.json(sorted);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🔥 FaceSlap LIVE at http://localhost:${PORT}`));
