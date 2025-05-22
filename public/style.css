@@ -47,3 +47,28 @@ h1 {
   color: gold;
   margin-top: 1rem;
 }
+form {
+  margin-bottom: 2rem;
+}
+
+input[type=\"file\"] {
+  margin: 1rem 0;
+  color: white;
+  background: #222;
+  padding: 0.5rem;
+  border-radius: 5px;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  background-color: crimson;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: darkred;
+}
+
