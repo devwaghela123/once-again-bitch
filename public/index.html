@@ -7,11 +7,20 @@
 </head>
 <body>
   <h1>FaceSlap Arena</h1>
+
+  <!-- Upload form -->
+  <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+    <label for="images">Upload 6-10 Faces:</label>
+    <input type="file" name="images" id="images" multiple required accept="image/*">
+    <button type="submit">🔥 Enter the Arena</button>
+  </form>
+
   <div id="arena">
     <div class="card" id="cardA"></div>
     <div class="vs">VS</div>
     <div class="card" id="cardB"></div>
   </div>
+
   <p id="roast"></p>
   <script src="app.js"></script>
 </body>
