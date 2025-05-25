@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Curse Carnival</title>
+  <title>RoastPit</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,9 +17,11 @@
     <p id="error" class="error"></p>
   </div>
 
-  <div id="uploadPhotos" style="display: none;">
-    <input type="file" id="photoInput" multiple accept="image/*">
-    <button onclick="uploadPhotos()">Upload Photos</button>
+  <div id="uploadSelfPhoto" style="display: none;">
+    <input type="file" id="photoInput" accept="image/*">
+    <button onclick="uploadPhoto()">Upload Your Photo</button>
+    <p id="uploadProgress">Waiting for players...</p>
+    <p id="countdown"></p>
   </div>
 
   <div id="burnSection" style="display: none;">
@@ -27,7 +29,7 @@
     <input id="labelInput" type="text" placeholder="Give this loser a prejudiced label">
     <p>Although they’re good, but…</p>
     <input id="burnInput" type="text" placeholder="Drop your savage burn...">
-    <p id="timer">30</p>
+    <p id="timer">120</p>
     <button onclick="submitBurn()">Submit Burn</button>
     <p id="burnProgress">Waiting...</p>
   </div>
