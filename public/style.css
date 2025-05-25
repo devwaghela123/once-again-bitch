@@ -97,3 +97,153 @@ h1 {
   letter-spacing: 2px;
   text-shadow: 0 0 20px rgba(255, 71, 87, 0.5);
 }
+/* CSS Extension for iOS Glassmorphism Points System */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+#pointsDisplay {
+  margin: 24px 0;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.points-container {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 71, 87, 0.15);
+  border-radius: 20px;
+  padding: 24px 20px;
+  backdrop-filter: blur(25px) saturate(140%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.points-container:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(255, 71, 87, 0.2);
+  border-color: rgba(255, 71, 87, 0.25);
+}
+
+.points-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  margin-bottom: 20px;
+  gap: 8px;
+}
+
+#currentPoints {
+  font-size: 3.2em;
+  font-weight: 800;
+  color: #ff4757;
+  text-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
+  letter-spacing: -2px;
+}
+
+.points-label {
+  font-size: 1.2em;
+  font-weight: 500;
+  color: rgba(255, 71, 87, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.points-breakdown {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.point-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 71, 87, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(15px);
+  transition: all 0.3s ease;
+}
+
+.point-item:hover {
+  background: rgba(255, 71, 87, 0.05);
+  border-color: rgba(255, 71, 87, 0.15);
+  transform: translateX(4px);
+}
+
+.point-icon {
+  font-size: 1.4em;
+  margin-right: 12px;
+  filter: drop-shadow(0 0 8px rgba(255, 71, 87, 0.3));
+}
+
+.point-desc {
+  flex-grow: 1;
+  font-size: 0.95em;
+  font-weight: 500;
+  color: rgba(255, 71, 87, 0.9);
+  letter-spacing: 0.3px;
+}
+
+.point-count {
+  font-size: 1.1em;
+  font-weight: 700;
+  color: #ff6b8a;
+  min-width: 30px;
+  text-align: center;
+  padding: 4px 8px;
+  background: rgba(255, 71, 87, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .points-container {
+    padding: 20px 16px;
+    margin: 20px 10px;
+  }
+  
+  #currentPoints {
+    font-size: 2.8em;
+  }
+  
+  .points-label {
+    font-size: 1em;
+  }
+  
+  .point-item {
+    padding: 10px 14px;
+  }
+  
+  .point-icon {
+    font-size: 1.2em;
+    margin-right: 10px;
+  }
+  
+  .point-desc {
+    font-size: 0.9em;
+  }
+  
+  .point-count {
+    font-size: 1em;
+    min-width: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .points-container {
+    padding: 18px 14px;
+    margin: 16px 8px;
+  }
+  
+  #currentPoints {
+    font-size: 2.4em;
+  }
+  
+  .point-item {
+    padding: 8px 12px;
+  }
+  
+  .point-desc {
+    font-size: 0.85em;
+  }
+}
