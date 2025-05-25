@@ -20,6 +20,10 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+app.post('/upload', upload.array('photos'), (req, res) => {
+  // Files are automatically saved to ./uploads folder
+});
+
 // Party data
 const parties = {};
 const MINIMUM_PLAYERS = 3; // Uncomment if you want a minimum
