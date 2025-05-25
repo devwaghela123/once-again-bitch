@@ -1,162 +1,141 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const http = require('http');
+const { Server } = require('socket.io');
 const multer = require('multer');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
 const app = express();
-const port = 3000;
-const SECRET_KEY = 'secret_key'; // Replace with a secure key in production
+const server = http.createServer(app);
+const io = new Server(server);
 
-// Database setup
-const db = new sqlite3.Database('./faceslap.db', (err) => {
-  if (err) console.error('Database connection error:', err);
-});
-
-// Create tables
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT,
-    email TEXT
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS photos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    file_path TEXT,
-    elo_rating INTEGER DEFAULT 1000,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS captions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    photo_id INTEGER,
-    caption_text TEXT,
-    score INTEGER DEFAULT 0,
-    FOREIGN KEY(photo_id) REFERENCES photos(id)
-  )`);
-  db.run(`CREATE TABLE IF NOT EXISTS comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    photo_id INTEGER,
-    user_id INTEGER,
-    comment_text TEXT,
-    is_anonymous INTEGER DEFAULT 0,
-    FOREIGN KEY(photo_id) REFERENCES photos(id),
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  )`);
-});
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Multer setup for photo uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+  filename: (req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`)
 });
 const upload = multer({ storage });
 
-// Middleware
-app.use(express.json());
-app.use(express.static('public'));
+// Party data
+const parties = {};
+const MINIMUM_PLAYERS = 3; // Uncomment if you want a minimum
 
-// Authentication middleware
-function authenticateToken(req, res, next) {
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ error: 'No token provided' });
-  jwt.verify(token, SECRET_KEY, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid token' });
-    req.user = user;
-    next();
+// Socket.IO for real-time
+io.on('connection', (socket) => {
+  console.log(`Device connected: ${socket.id}`); // Logs device ID for Render.com
+
+  socket.on('createParty', () => {
+    const partyCode = Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit code
+    parties[partyCode] = {
+      photos: [],
+      burns: [],
+      users: [],
+      submitted: 0
+    };
+    socket.join(partyCode);
+    socket.emit('partyCreated', partyCode);
+    io.to(partyCode).emit('userCount', parties[partyCode].users.length);
+  });
+
+  socket.on('joinParty', (code) => {
+    if (parties[code]) {
+      socket.join(code);
+      parties[code].users.push(socket.id);
+      io.to(code).emit('userCount', parties[code].users.length);
+      socket.emit('joinedParty', code);
+    } else {
+      socket.emit('error', 'Invalid party code');
+    }
+  });
+
+  socket.on('uploadPhotos', (code, files) => {
+    if (parties[code]) {
+      // Uncomment this block if you want a minimum number of players
+      /*
+      if (parties[code].users.length < MINIMUM_PLAYERS) {
+        socket.emit('error', `Need at least ${MINIMUM_PLAYERS} players to start!`);
+        return;
+      }
+      */
+      const photoPaths = files.map(file => ({ path: file }));
+      parties[code].photos = photoPaths;
+      io.to(code).emit('photosUploaded', photoPaths);
+      distributePhotos(code);
+      startTimer(code);
+    }
+  });
+
+  socket.on('submitBurn', (code, photoPath, label, burn) => {
+    if (parties[code]) {
+      // Log the comment to Render.com logs
+      console.log(`Device ${socket.id} submitted for photo ${photoPath}: Label: ${label}, Burn: ${burn}`);
+      
+      parties[code].burns.push({ photoPath, label, burn });
+      parties[code].submitted++;
+      io.to(code).emit('burnSubmitted', parties[code].submitted, parties[code].photos.length);
+      if (parties[code].submitted === parties[code].photos.length) {
+        showHallOfShame(code);
+      }
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`Device disconnected: ${socket.id}`); // Logs device ID for Render.com
+    for (const code in parties) {
+      const index = parties[code].users.indexOf(socket.id);
+      if (index !== -1) {
+        parties[code].users.splice(index, 1);
+        io.to(code).emit('userCount', parties[code].users.length);
+      }
+    }
+  });
+});
+
+// Distribute photos to users
+function distributePhotos(code) {
+  const party = parties[code];
+  const shuffledPhotos = [...party.photos].sort(() => Math.random() - 0.5);
+  party.users.forEach((userId, i) => {
+    const photo = shuffledPhotos[i % shuffledPhotos.length];
+    io.to(userId).emit('receivePhoto', photo);
   });
 }
 
-// Routes
-app.post('/register', async (req, res) => {
-  const { username, password, email } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
-  db.run(`INSERT INTO users (username, password, email) VALUES (?, ?, ?)`,
-    [username, hashedPassword, email], function (err) {
-      if (err) return res.status(400).json({ error: err.message });
-      res.json({ id: this.lastID });
-    });
-});
+// 30-second timer
+function startTimer(code) {
+  let timeLeft = 30;
+  const timer = setInterval(() => {
+    io.to(code).emit('timerUpdate', timeLeft);
+    timeLeft--;
+    if (timeLeft < 0 || parties[code].submitted === parties[code].photos.length) {
+      clearInterval(timer);
+      showHallOfShame(code);
+    }
+  }, 1000);
+}
 
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  db.get(`SELECT * FROM users WHERE username = ?`, [username], async (err, user) => {
-    if (err || !user) return res.status(400).json({ error: 'User not found' });
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
-    const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1h' });
-    res.json({ token });
+// Show Hall of Shame
+function showHallOfShame(code) {
+  const party = parties[code];
+  const hallOfShame = party.photos.map(photo => {
+    const burnEntry = party.burns.find(b => b.photoPath === photo.path) || {
+      label: 'Unnamed Loser',
+      burn: 'Too pathetic to even get roasted'
+    };
+    return { photoPath: photo.path, label: burnEntry.label, burn: burnEntry.burn };
   });
+  io.to(code).emit('showHallOfShame', hallOfShame);
+}
+
+// Route for photo upload
+app.post('/upload', upload.array('photos'), (req, res) => {
+  const files = req.files.map(file => `/uploads/${file.filename}`);
+  res.json(files);
 });
 
-app.post('/upload', authenticateToken, upload.single('photo'), (req, res) => {
-  const user_id = req.user.id;
-  const file_path = req.file.path;
-  db.run(`INSERT INTO photos (user_id, file_path) VALUES (?, ?)`,
-    [user_id, file_path], function (err) {
-      if (err) return res.status(400).json({ error: err.message });
-      res.json({ id: this.lastID });
-    });
-});
-
-app.get('/matchup', (req, res) => {
-  db.all(`SELECT * FROM photos ORDER BY RANDOM() LIMIT 2`, [], (err, rows) => {
-    if (err || rows.length < 2) return res.status(500).json({ error: 'Not enough photos' });
-    res.json(rows);
-  });
-});
-
-app.post('/vote', (req, res) => {
-  const { winner_id, loser_id } = req.body;
-  // Simple ELO update (to be expanded)
-  db.run(`UPDATE photos SET elo_rating = elo_rating + 10 WHERE id = ?`, [winner_id]);
-  db.run(`UPDATE photos SET elo_rating = elo_rating - 5 WHERE id = ?`, [loser_id]);
-  res.json({ message: 'Vote recorded' });
-});
-
-app.get('/captions/:photoId', (req, res) => {
-  const { photoId } = req.params;
-  db.all(`SELECT * FROM captions WHERE photo_id = ?`, [photoId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-app.post('/caption', authenticateToken, (req, res) => {
-  const { photo_id, caption_text } = req.body;
-  db.run(`INSERT INTO captions (photo_id, caption_text) VALUES (?, ?)`,
-    [photo_id, caption_text], function (err) {
-      if (err) return res.status(400).json({ error: err.message });
-      res.json({ id: this.lastID });
-    });
-});
-
-app.post('/caption/vote', (req, res) => {
-  const { caption_id } = req.body;
-  db.run(`UPDATE captions SET score = score + 5 WHERE id = ?`, [caption_id]);
-  res.json({ message: 'Caption vote recorded' });
-});
-
-app.post('/comment', authenticateToken, (req, res) => {
-  const { photo_id, comment_text, is_anonymous } = req.body;
-  const user_id = is_anonymous ? null : req.user.id;
-  db.run(`INSERT INTO comments (photo_id, user_id, comment_text, is_anonymous) VALUES (?, ?, ?, ?)`,
-    [photo_id, user_id, comment_text, is_anonymous ? 1 : 0], function (err) {
-      if (err) return res.status(400).json({ error: err.message });
-      res.json({ id: this.lastID });
-    });
-});
-
-app.get('/comments/:photoId', (req, res) => {
-  const { photoId } = req.params;
-  db.all(`SELECT comment_text, is_anonymous FROM comments WHERE photo_id = ?`, [photoId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
