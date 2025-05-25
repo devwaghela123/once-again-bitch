@@ -1,52 +1,76 @@
 body {
-  background: #111;
-  color: #ff4444;
-  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color: #ff375f;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
   text-align: center;
-  padding: 20px;
+  padding: 40px 20px;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 button, input {
-  padding: 10px;
-  margin: 10px;
-  background: #333;
-  color: #ff4444;
-  border: 2px solid #ff4444;
-  border-radius: 5px;
+  padding: 14px 24px;
+  margin: 12px;
+  background: rgba(255, 55, 95, 0.1);
+  color: #ff375f;
+  border: 1px solid rgba(255, 55, 95, 0.3);
+  border-radius: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  font-size: 16px;
+  backdrop-filter: blur(20px);
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 button:hover {
-  background: #ff4444;
-  color: #111;
+  background: #ff375f;
+  color: #1a1a1a;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 55, 95, 0.3);
 }
 
 img {
   max-width: 200px;
-  border: 2px solid #ff4444;
-  margin: 10px;
+  border: 1px solid rgba(255, 55, 95, 0.2);
+  margin: 16px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .shameEntry {
-  margin: 20px 0;
-  padding: 10px;
-  border-bottom: 1px solid #ff4444;
+  margin: 24px 0;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 55, 95, 0.15);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
 }
 
 .error {
-  color: #ff8888;
+  color: #ff6b6b;
+  font-weight: 500;
 }
 
 #hallOfShame {
   max-height: 80vh;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ff375f #2d2d2d;
 }
 
 h1 {
-  font-size: 2em;
+  font-size: 3em;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: -2px;
+  margin-bottom: 30px;
+  background: linear-gradient(90deg, #ff375f, #ff6b95);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 #timer {
-  font-size: 1.5em;
-  margin: 10px;
+  font-size: 1.8em;
+  margin: 20px;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
