@@ -34,11 +34,13 @@ io.on('connection', (socket) => {
       photos: [],
       burns: [],
       users: [],
-      submitted: 0
+      submitted: 0,
+      uploaded: 0 // Track how many have uploaded
     };
     socket.join(partyCode);
     socket.emit('partyCreated', partyCode);
     io.to(partyCode).emit('userCount', parties[partyCode].users.length);
+    io.to(partyCode).emit('uploadProgress', parties[partyCode].users.length - parties[partyCode].uploaded);
   });
 
   socket.on('joinParty', (code) => {
@@ -47,33 +49,27 @@ io.on('connection', (socket) => {
       parties[code].users.push(socket.id);
       io.to(code).emit('userCount', parties[code].users.length);
       socket.emit('joinedParty', code);
+      io.to(code).emit('uploadProgress', parties[code].users.length - parties[code].uploaded);
     } else {
       socket.emit('error', 'Invalid party code');
     }
   });
 
-  socket.on('uploadPhotos', (code, files) => {
-    if (parties[code]) {
-      // Uncomment this block if you want a minimum number of players
-      /*
-      if (parties[code].users.length < MINIMUM_PLAYERS) {
-        socket.emit('error', `Need at least ${MINIMUM_PLAYERS} players to start!`);
-        return;
+  socket.on('uploadPlayerPhoto', (code, file) => {
+    if (parties[code] && !parties[code].photos.some(p => p.userId === socket.id)) {
+      console.log(`Device ${socket.id} uploaded photo ${file}`); // Log upload
+      parties[code].photos.push({ path: file, userId: socket.id });
+      parties[code].uploaded++;
+      io.to(code).emit('uploadProgress', parties[code].users.length - parties[code].uploaded);
+      if (parties[code].uploaded === parties[code].users.length) {
+        startGameCountdown(code);
       }
-      */
-      const photoPaths = files.map(file => ({ path: file }));
-      parties[code].photos = photoPaths;
-      io.to(code).emit('photosUploaded', photoPaths);
-      distributePhotos(code);
-      startTimer(code);
     }
   });
 
   socket.on('submitBurn', (code, photoPath, label, burn) => {
     if (parties[code]) {
-      // Log the comment to Render.com logs
       console.log(`Device ${socket.id} submitted for photo ${photoPath}: Label: ${label}, Burn: ${burn}`);
-      
       parties[code].burns.push({ photoPath, label, burn });
       parties[code].submitted++;
       io.to(code).emit('burnSubmitted', parties[code].submitted, parties[code].photos.length);
@@ -84,12 +80,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`Device disconnected: ${socket.id}`); // Logs device ID for Render.com
+    console.log(`Device disconnected: ${socket.id}`);
     for (const code in parties) {
       const index = parties[code].users.indexOf(socket.id);
       if (index !== -1) {
         parties[code].users.splice(index, 1);
         io.to(code).emit('userCount', parties[code].users.length);
+        io.to(code).emit('uploadProgress', parties[code].users.length - parties[code].uploaded);
       }
     }
   });
@@ -105,7 +102,21 @@ function distributePhotos(code) {
   });
 }
 
-// 30-second timer
+// 3-second countdown before game starts
+function startGameCountdown(code) {
+  let countdown = 3;
+  const timer = setInterval(() => {
+    io.to(code).emit('countdown', countdown);
+    countdown--;
+    if (countdown < 0) {
+      clearInterval(timer);
+      distributePhotos(code);
+      startTimer(code);
+    }
+  }, 1000);
+}
+
+// 120-second timer for burn phase
 function startTimer(code) {
   let timeLeft = 120;
   const timer = setInterval(() => {
@@ -132,9 +143,9 @@ function showHallOfShame(code) {
 }
 
 // Route for photo upload
-app.post('/upload', upload.array('photos'), (req, res) => {
-  const files = req.files.map(file => `/uploads/${file.filename}`);
-  res.json(files);
+app.post('/upload', upload.single('photo'), (req, res) => {
+  const file = `/uploads/${req.file.filename}`;
+  res.json(file);
 });
 
 const PORT = process.env.PORT || 3000;
