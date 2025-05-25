@@ -10,22 +10,22 @@ function joinParty() {
   socket.emit('joinParty', code);
 }
 
-function uploadPhotos() {
-  const files = document.getElementById('photoInput').files;
-  if (files.length === 0) return alert('No photos selected');
+function uploadPhoto() {
+  const file = document.getElementById('photoInput').files[0];
+  if (!file) return alert('No photo selected');
   
   const formData = new FormData();
-  for (let file of files) {
-    formData.append('photos', file);
-  }
+  formData.append('photo', file);
 
   fetch('/upload', {
     method: 'POST',
     body: formData
   })
     .then(res => res.json())
-    .then(files => {
-      socket.emit('uploadPhotos', partyCode, files);
+    .then(file => {
+      socket.emit('uploadPlayerPhoto', partyCode, file);
+      document.getElementById('photoInput').disabled = true;
+      document.getElementById('uploadSelfPhoto').querySelector('button').disabled = true;
     });
 }
 
@@ -41,12 +41,13 @@ function submitBurn() {
 socket.on('partyCreated', (code) => {
   partyCode = code;
   document.getElementById('partySetup').innerHTML = `<p>Party Code: ${code}</p>`;
-  document.getElementById('uploadPhotos').style.display = 'block';
+  document.getElementById('uploadSelfPhoto').style.display = 'block';
 });
 
 socket.on('joinedParty', (code) => {
   partyCode = code;
   document.getElementById('partySetup').innerHTML = `<p>Joined Party: ${code}</p>`;
+  document.getElementById('uploadSelfPhoto').style.display = 'block';
 });
 
 socket.on('error', (msg) => {
@@ -57,8 +58,13 @@ socket.on('userCount', (count) => {
   document.getElementById('userCount').innerText = `${count} users joined`;
 });
 
-socket.on('photosUploaded', () => {
-  document.getElementById('uploadPhotos').style.display = 'none';
+socket.on('uploadProgress', (remaining) => {
+  document.getElementById('uploadProgress').innerText = `${remaining} players remaining`;
+});
+
+socket.on('countdown', (time) => {
+  document.getElementById('countdown').innerText = time > 0 ? `Game begins in ${time}...` : 'Game on!';
+  if (time < 0) document.getElementById('uploadSelfPhoto').style.display = 'none';
 });
 
 socket.on('receivePhoto', (photo) => {
