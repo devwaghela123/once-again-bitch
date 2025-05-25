@@ -1,63 +1,52 @@
 body {
-  background-color: #121212;
-  color: #fff;
-  font-family: 'Arial', sans-serif;
+  background: #111;
+  color: #ff4444;
+  font-family: Arial, sans-serif;
   text-align: center;
-  margin: 0;
   padding: 20px;
 }
 
-#auth, #upload {
-  margin-bottom: 20px;
-}
-
-input {
-  background: #333;
-  color: #fff;
-  border: 1px solid #ff0000;
-  padding: 5px;
-  margin: 5px;
-}
-
-#matchup {
-  display: flex;
-  justify-content: space-around;
-  margin: 20px 0;
-}
-
-.face {
-  background: #222;
+button, input {
   padding: 10px;
-  border: 2px solid #ff0000;
-}
-
-img {
-  width: 300px;
-  height: 300px;
-  object-fit: cover;
-}
-
-button {
-  background: #ff0000;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  margin: 5px;
-  cursor: pointer;
-  font-weight: bold;
+  margin: 10px;
+  background: #333;
+  color: #ff4444;
+  border: 2px solid #ff4444;
+  border-radius: 5px;
 }
 
 button:hover {
-  background: #cc0000;
+  background: #ff4444;
+  color: #111;
 }
 
-#captions, #comments {
+img {
+  max-width: 200px;
+  border: 2px solid #ff4444;
+  margin: 10px;
+}
+
+.shameEntry {
   margin: 20px 0;
+  padding: 10px;
+  border-bottom: 1px solid #ff4444;
 }
 
-#captionList div, #commentList div {
-  background: #333;
-  padding: 10px;
-  margin: 5px;
-  border-left: 4px solid #ff0000;
+.error {
+  color: #ff8888;
+}
+
+#hallOfShame {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+h1 {
+  font-size: 2em;
+  text-transform: uppercase;
+}
+
+#timer {
+  font-size: 1.5em;
+  margin: 10px;
 }
