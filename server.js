@@ -107,7 +107,7 @@ function distributePhotos(code) {
 
 // 30-second timer
 function startTimer(code) {
-  let timeLeft = 30;
+  let timeLeft = 120;
   const timer = setInterval(() => {
     io.to(code).emit('timerUpdate', timeLeft);
     timeLeft--;
